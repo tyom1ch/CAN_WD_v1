@@ -167,12 +167,22 @@
             let decoder = new TextDecoder('utf-8');
             rxBuffer += decoder.decode(event.target.value);
             
-            if (rxBuffer.endsWith('}')) {
+            // Ищем полные JSON объекты по символу '\n' (разделитель от ESP32)
+            let newlineIdx;
+            while ((newlineIdx = rxBuffer.indexOf('\n')) !== -1) {
+                let line = rxBuffer.substring(0, newlineIdx).trim();
+                rxBuffer = rxBuffer.substring(newlineIdx + 1);
+                
+                if (line.length === 0) continue;
+                
                 try {
-                    const data = JSON.parse(rxBuffer);
-                    rxBuffer = "";
+                    const data = JSON.parse(line);
                     
-                    document.getElementById('mileage').innerText = data.mileage;
+                    // Обновляем пробег — только если он не 0 (защита от переходных состояний)
+                    if (data.mileage !== undefined) {
+                        document.getElementById('mileage').innerText = data.mileage > 0 ? data.mileage : '--';
+                    }
+                    
                     isActive = data.active;
                     const btn = document.getElementById('toggleBtn');
                     const status = document.getElementById('status');
@@ -195,7 +205,9 @@
                         status.className = 'status-badge status-active';
                         status.innerText = 'Connected (Standby)';
                     }
-                } catch (e) { rxBuffer = ""; }
+                } catch (e) {
+                    console.warn("BLE JSON parse error:", line);
+                }
             }
         }
 
