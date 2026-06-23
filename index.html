@@ -52,6 +52,8 @@
         }
         .mileage-val { font-size: 48px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
         .mileage-label { font-size: 14px; font-weight: 300; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; }
+        .ign-off { font-size: 12px; color: #f59e0b; margin-top: 6px; }
+        .fw-badge { font-size: 11px; color: #475569; margin-top: 4px; }
         .input-group { margin-bottom: 25px; text-align: left; }
         .input-group label { display: block; font-size: 14px; color: #cbd5e1; margin-bottom: 8px; }
         .target-input {
@@ -117,6 +119,7 @@
             <div class="mileage-display">
                 <div class="mileage-val" id="mileage">--</div>
                 <div class="mileage-label">Current Mileage (km)</div>
+                <div class="ign-off" id="ignWarn" style="display:none">⚠️ No signal — turn on ignition</div>
             </div>
 
             <div class="input-group">
@@ -128,6 +131,7 @@
         </div>
 
         <div id="status" class="status-badge">Disconnected</div>
+        <div class="fw-badge" id="fwVer"></div>
     </div>
 
     <script>
@@ -142,7 +146,10 @@
             try {
                 if (!navigator.bluetooth) { alert("Web Bluetooth is not supported."); return; }
                 document.getElementById('status').innerText = 'Scanning...';
-                bleDevice = await navigator.bluetooth.requestDevice({ filters: [{ name: 'CAN_Winder_Pro' }], optionalServices: [SERVICE_UUID] });
+                bleDevice = await navigator.bluetooth.requestDevice({ 
+                    filters: [{ namePrefix: 'CAN_Winder_' }], 
+                    optionalServices: [SERVICE_UUID] 
+                });
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
                 document.getElementById('status').innerText = 'Connecting...';
                 bleServer = await bleDevice.gatt.connect();
@@ -182,6 +189,13 @@
                     if (data.mileage !== undefined) {
                         document.getElementById('mileage').innerText = data.mileage > 0 ? data.mileage : '--';
                     }
+                    
+                    // Индикатор зажигания
+                    const ignWarn = document.getElementById('ignWarn');
+                    if (ignWarn) ignWarn.style.display = (data.ign === false) ? 'block' : 'none';
+                    
+                    // Версия прошивки
+                    if (data.fw) document.getElementById('fwVer').innerText = 'fw ' + data.fw;
                     
                     isActive = data.active;
                     const btn = document.getElementById('toggleBtn');
